@@ -49,7 +49,6 @@ class TimeBar : View {
     private var mScrubPosition = 0L
     private var mTouchPosition: Point? = null
     private var mTouchTargetHeight = 0
-    var scrubberDrawable: Drawable? = null
     var keyCountIncrement = DEFAULT_INCREMENT_COUNT
         set(value) {
             keyTimeIncrement = TIME_UNSET
@@ -99,9 +98,7 @@ class TimeBar : View {
         mBufferedPaint.color = getDefaultBufferedColor(defaultColor)
         mUnplayedPaint.color = getDefaultUnplayedColor(defaultColor)
         mPlayedAdMarkerPaint.color = getDefaultPlayedAdMarkerColor(DEFAULT_AD_MARKER_COLOR.toInt())
-        if (scrubberDrawable == null) {
-            mScrubberPadding = (max(mScrubberDisabledSize, max(mScrubberEnabledSize, mScrubberDraggedSize)) + 1) / 2
-        }
+        mScrubberPadding = (max(mScrubberDisabledSize, max(mScrubberEnabledSize, mScrubberDraggedSize)) + 1) / 2
         isFocusable = true
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             if (importantForAccessibility == View.IMPORTANT_FOR_ACCESSIBILITY_AUTO)
@@ -114,31 +111,14 @@ class TimeBar : View {
         mListeners.add(listener)
     }
 
-    override fun drawableStateChanged() {
-        //Log.e(TAG, "drawableStateChanged")
-        super.drawableStateChanged()
-        updateDrawableState()
-    }
 
     private fun drawPlayhead(canvas: Canvas) {
         //Log.e(TAG, "drawPlayhead")
         if (duration <= 0) return
         val px = mScrubberBar.right.contrain(mScrubberBar.left, mProgressBar.right)
         val py = mScrubberBar.centerY()
-        scrubberDrawable?.let {
-            val sw = it.intrinsicWidth
-            val sh = it.intrinsicHeight
-            it.setBounds(
-                    px - sw / 2,
-                    py - sh / 2,
-                    px + sw / 2,
-                    py + sh / 2
-            )
-            it.draw(canvas)
-        } ?: run {
-            val scrubberSize = if (mScrubbing || isFocused) mScrubberDraggedSize else if (isEnabled) mScrubberEnabledSize else mScrubberDisabledSize
-            canvas.drawCircle(px.toFloat(), py.toFloat(), scrubberSize / 2f, mScrubberPaint)
-        }
+        val scrubberSize = if (mScrubbing || isFocused) mScrubberDraggedSize else if (isEnabled) mScrubberEnabledSize else mScrubberDisabledSize
+        canvas.drawCircle(px.toFloat(), py.toFloat(), scrubberSize / 2f, mScrubberPaint)
     }
 
     private fun drawTimeBar(canvas: Canvas) {
@@ -170,11 +150,6 @@ class TimeBar : View {
         return (mScrubberBar.width() * duration) / mProgressBar.width()
     }
 
-    override fun jumpDrawablesToCurrentState() {
-        //Log.e(TAG, "jumpDrawablesToCurrentState")
-        super.jumpDrawablesToCurrentState()
-        scrubberDrawable?.jumpToCurrentState()
-    }
 
     override fun onDraw(canvas: Canvas) {
         //Log.e(TAG, "onDraw")
@@ -270,15 +245,8 @@ class TimeBar : View {
         val h = if (hm == MeasureSpec.UNSPECIFIED) mTouchTargetHeight else if (hm == MeasureSpec.EXACTLY) hs else min(mTouchTargetHeight, hs)
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), h)
         //Log.e("onMeasure","hm => ${hm} \nhs => ${hs} \nh => ${h} \nwidthMeasureSpec => ${widthMeasureSpec} \nheightMeasureSpec => ${heightMeasureSpec} \n")
-        updateDrawableState()
     }
 
-    override fun onRtlPropertiesChanged(layoutDirection: Int) {
-        //Log.e(TAG, "onRtlPropertiesChanged")
-        scrubberDrawable?.let {
-            if (it.setDrawableLayoutDirection(layoutDirection)) invalidate()
-        }
-    }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         //Log.e(TAG, "onTouchEvent")
@@ -427,11 +395,6 @@ class TimeBar : View {
         invalidate(mSeekBounds)
     }
 
-    private fun updateDrawableState() {
-        //Log.e(TAG, "updateDrawableState")
-        if (scrubberDrawable?.isStateful == true && scrubberDrawable?.setState(drawableState) == true)
-            invalidate()
-    }
 
     companion object {
         const val DEFAULT_AD_MARKER_COLOR = 0xB2FFFF00
