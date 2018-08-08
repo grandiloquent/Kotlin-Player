@@ -125,7 +125,7 @@ class TimeBar : View {
         //Log.e(TAG, "drawTimeBar")
         val progressBarHeight = mProgressBar.height()
         val barTop = (mProgressBar.centerY() - progressBarHeight / 2).toFloat()
-        val barBottom = (barTop + progressBarHeight).toFloat()
+        val barBottom = (barTop + progressBarHeight)
         if (duration <= 0) {
             canvas.drawRect(mProgressBar.left.toFloat(), barTop, mProgressBar.right.toFloat(), barBottom, mUnplayedPaint)
             return
@@ -169,6 +169,7 @@ class TimeBar : View {
         event.className = TimeBar::class.java.name
     }
 
+    @Suppress("DEPRECATION")
     override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
         //Log.e(TAG, "onInitializeAccessibilityNodeInfo")
         super.onInitializeAccessibilityNodeInfo(info)
