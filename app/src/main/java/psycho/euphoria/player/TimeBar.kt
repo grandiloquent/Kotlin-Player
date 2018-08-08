@@ -17,6 +17,7 @@ import android.os.Bundle
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import kotlin.math.min
+import android.R.attr.min
 
 
 class TimeBar : View {
@@ -127,9 +128,39 @@ class TimeBar : View {
         }
     }
 
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val hm = MeasureSpec.getMode(heightMeasureSpec)
+        val hs = MeasureSpec.getSize(heightMeasureSpec)
+        val h = if (hm == MeasureSpec.UNSPECIFIED) mTouchTargetHeight else if (hm == MeasureSpec.EXACTLY) hs else min(mTouchTargetHeight, hs)
+        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), height)
+        updateDrawableState()
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        val w = right - left
+        val h = bottom - top
+        val barY = (h - mTouchTargetHeight) / 2
+        val seekLeft = paddingLeft
+        val seekRight = w - paddingRight
+        val progressY = barY + (mTouchTargetHeight - mBarHeight) / 2
+        mSeekBounds.set(seekLeft, barY, seekRight, barY + mTouchTargetHeight)
+        mProgressBar.set(mSeekBounds.left + mScrubberPadding, progressY, mSeekBounds.right - mScrubberPadding, progressY + mBarHeight)
+        update()
+    }
+
+    fun addListener(listener: OnScrubListener) {
+        mListeners.add(listener)
+    }
+
     override fun drawableStateChanged() {
         super.drawableStateChanged()
         updateDrawableState()
+    }
+
+    fun getScrubberPosition(): Long {
+        if (mProgressBar.width() <= 0 || duration == TIME_UNSET) return 0L
+        return (mScrubberBar.width() * duration) / mProgressBar.width()
     }
 
     override fun jumpDrawablesToCurrentState() {
@@ -137,22 +168,11 @@ class TimeBar : View {
         scrubberDrawable?.jumpToCurrentState()
     }
 
-    override fun setEnabled(enabled: Boolean) {
-        super.setEnabled(enabled)
-        if (mScrubbing && !enabled) stopScrubbing(true)
-    }
-
     override fun onInitializeAccessibilityEvent(event: AccessibilityEvent) {
         super.onInitializeAccessibilityEvent(event)
         if (event.eventType == AccessibilityEvent.TYPE_VIEW_SELECTED)
             event.text.add(getProgressText())
         event.className = TimeBar::class.java.name
-    }
-
-    override fun onRtlPropertiesChanged(layoutDirection: Int) {
-        scrubberDrawable?.let {
-            if (it.setDrawableLayoutDirection(layoutDirection)) invalidate()
-        }
     }
 
     override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
@@ -175,9 +195,10 @@ class TimeBar : View {
         }
     }
 
-    fun getScrubberPosition(): Long {
-        if (mProgressBar.width() <= 0 || duration == TIME_UNSET) return 0L
-        return (mScrubberBar.width() * duration) / mProgressBar.width()
+    override fun onRtlPropertiesChanged(layoutDirection: Int) {
+        scrubberDrawable?.let {
+            if (it.setDrawableLayoutDirection(layoutDirection)) invalidate()
+        }
     }
 
     override fun performAccessibilityAction(action: Int, arguments: Bundle?): Boolean {
@@ -204,6 +225,10 @@ class TimeBar : View {
         mScrubberBar.right = x.toInt().contrain(mProgressBar.left, mProgressBar.right)
     }
 
+    fun removeListener(listener: OnScrubListener) {
+        mListeners.remove(listener)
+    }
+
     private fun resolveRelativeTouchPosition(event: MotionEvent): Point? {
         if (mLocationOnScreen == null) {
             mLocationOnScreen = IntArray(2)
@@ -226,6 +251,11 @@ class TimeBar : View {
         mListeners.forEach { it.onScrubMove(this, mScrubPosition) }
         update()
         return true
+    }
+
+    override fun setEnabled(enabled: Boolean) {
+        super.setEnabled(enabled)
+        if (mScrubbing && !enabled) stopScrubbing(true)
     }
 
     fun setPlayedColor(color: Int) {
@@ -253,7 +283,7 @@ class TimeBar : View {
         mScrubberBar.set(mProgressBar)
         val newScrubberTime = if (mScrubbing) mScrubPosition else position
         if (duration > 0) {
-            val bufferedPixelWidth = ((mProgressBar.width() * mBufferedPosition) / duration).toInt()
+            val bufferedPixelWidth = ((mProgressBar.width() * bufferedPosition) / duration).toInt()
             mBufferedBar.right = min(mProgressBar.left + bufferedPixelWidth, mProgressBar.right)
             val scrubberPixelPosition = ((mProgressBar.width() * newScrubberTime) / duration).toInt()
             mScrubberBar.right = min(mProgressBar.left + scrubberPixelPosition, mProgressBar.right)
@@ -268,7 +298,6 @@ class TimeBar : View {
         if (scrubberDrawable?.isStateful == true && scrubberDrawable?.setState(drawableState) == true)
             invalidate()
     }
-
 
     companion object {
         private const val TIME_UNSET = Long.MIN_VALUE + 1
