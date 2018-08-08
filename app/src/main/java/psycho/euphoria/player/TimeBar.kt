@@ -33,7 +33,6 @@ class TimeBar : View {
     val mScrubberPaint = Paint()
     val mBufferedPaint = Paint()
     val mUnplayedPaint = Paint()
-    val mAdMarkerPaint = Paint()
     val mPlayedAdMarkerPaint = Paint()
 
     val mSeekBounds = Rect()
@@ -46,7 +45,6 @@ class TimeBar : View {
     val mStopScrubbingRunable = Runnable { stopScrubbing(false) }
     var mBarHeight = 0
     var mTouchTargetHeight = 0
-    var mAdMarkerWidth = 0
     var mScrubberDisabledSize = 0
     var mScrubberEnabledSize = 0
     var mScrubberDraggedSize = 0
@@ -105,7 +103,6 @@ class TimeBar : View {
 
         mBarHeight = DEFAULT_BAR_HEIGHT_DP.dpToPx(metrics)
         mTouchTargetHeight = DEFAULT_TOUCH_TARGET_HEIGHT_DP.dpToPx(metrics)
-        mAdMarkerWidth = DEFAULT_AD_MARKER_WIDTH_DP.dpToPx(metrics)
         mScrubberEnabledSize = DEFAULT_SCRUBBER_ENABLED_SIZE_DP.dpToPx(metrics)
         mScrubberDisabledSize = DEFAULT_SCRUBBER_DISABLED_SIZE_DP.dpToPx(metrics)
         mScrubberDraggedSize = DEFAULT_SCRUBBER_DRAGGED_SIZE_DP.dpToPx(metrics)
@@ -116,7 +113,6 @@ class TimeBar : View {
         mScrubberPaint.color = getDefaultScrubberColor(defaultColor)
         mBufferedPaint.color = getDefaultBufferedColor(defaultColor)
         mUnplayedPaint.color = getDefaultUnplayedColor(defaultColor)
-        mAdMarkerPaint.color = DEFAULT_AD_MARKER_COLOR.toInt()
         mPlayedAdMarkerPaint.color = getDefaultPlayedAdMarkerColor(DEFAULT_AD_MARKER_COLOR.toInt())
 
         if (scrubberDrawable == null) {
@@ -130,52 +126,14 @@ class TimeBar : View {
     }
 
 
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val hm = MeasureSpec.getMode(heightMeasureSpec)
-        val hs = MeasureSpec.getSize(heightMeasureSpec)
-        val h = if (hm == MeasureSpec.UNSPECIFIED) mTouchTargetHeight else if (hm == MeasureSpec.EXACTLY) hs else min(mTouchTargetHeight, hs)
-        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), height)
-        updateDrawableState()
-    }
-
-    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
-        val w = right - left
-        val h = bottom - top
-        val barY = (h - mTouchTargetHeight) / 2
-        val seekLeft = paddingLeft
-        val seekRight = w - paddingRight
-        val progressY = barY + (mTouchTargetHeight - mBarHeight) / 2
-        mSeekBounds.set(seekLeft, barY, seekRight, barY + mTouchTargetHeight)
-        mProgressBar.set(mSeekBounds.left + mScrubberPadding, progressY, mSeekBounds.right - mScrubberPadding, progressY + mBarHeight)
-        update()
-    }
 
     fun addListener(listener: OnScrubListener) {
         mListeners.add(listener)
     }
-
     override fun drawableStateChanged() {
         super.drawableStateChanged()
         updateDrawableState()
     }
-
-    fun getScrubberPosition(): Long {
-        if (mProgressBar.width() <= 0 || duration == TIME_UNSET) return 0L
-        return (mScrubberBar.width() * duration) / mProgressBar.width()
-    }
-
-    override fun jumpDrawablesToCurrentState() {
-        super.jumpDrawablesToCurrentState()
-        scrubberDrawable?.jumpToCurrentState()
-    }
-
-    override fun onInitializeAccessibilityEvent(event: AccessibilityEvent) {
-        super.onInitializeAccessibilityEvent(event)
-        if (event.eventType == AccessibilityEvent.TYPE_VIEW_SELECTED)
-            event.text.add(getProgressText())
-        event.className = TimeBar::class.java.name
-    }
-
     private fun drawPlayhead(canvas: Canvas) {
         if (duration <= 0) return
         val px = mScrubberBar.right.contrain(mScrubberBar.left, mProgressBar.right)
@@ -195,7 +153,41 @@ class TimeBar : View {
             canvas.drawCircle(px.toFloat(), py.toFloat(), scrubberSize / 2f, mScrubberPaint)
         }
     }
-
+    private fun drawTimeBar(canvas: Canvas) {
+        val progressBarHeight = mProgressBar.height()
+        val barTop = (mProgressBar.centerY() - progressBarHeight / 2).toFloat()
+        val barBottom = (barTop + progressBarHeight).toFloat()
+        if (duration <= 0) {
+            canvas.drawRect(mProgressBar.left.toFloat(), barTop, mProgressBar.right.toFloat(), barBottom, mUnplayedPaint)
+            return
+        }
+        val br = mBufferedBar.right
+        val pl = max(max(mProgressBar.left, br), mScrubberBar.right)
+        if (pl < mProgressBar.right) {
+            canvas.drawRect(pl.toFloat(), barTop, mProgressBar.right.toFloat(), barBottom, mUnplayedPaint)
+        }
+        val bl = max(mBufferedBar.left, mScrubberBar.right)
+        if (br > bl) {
+            canvas.drawRect(bl.toFloat(), barTop, br.toFloat(), barBottom, mBufferedPaint)
+        }
+        if (mScrubberBar.width() > 0) {
+            canvas.drawRect(mScrubberBar.left.toFloat(), barTop, mScrubberBar.right.toFloat(), barBottom, mPlayedPaint)
+        }
+    }
+    fun getScrubberPosition(): Long {
+        if (mProgressBar.width() <= 0 || duration == TIME_UNSET) return 0L
+        return (mScrubberBar.width() * duration) / mProgressBar.width()
+    }
+    override fun jumpDrawablesToCurrentState() {
+        super.jumpDrawablesToCurrentState()
+        scrubberDrawable?.jumpToCurrentState()
+    }
+    override fun onInitializeAccessibilityEvent(event: AccessibilityEvent) {
+        super.onInitializeAccessibilityEvent(event)
+        if (event.eventType == AccessibilityEvent.TYPE_VIEW_SELECTED)
+            event.text.add(getProgressText())
+        event.className = TimeBar::class.java.name
+    }
     override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
         super.onInitializeAccessibilityNodeInfo(info)
         info.apply {
@@ -215,13 +207,29 @@ class TimeBar : View {
             }
         }
     }
-
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        val w = right - left
+        val h = bottom - top
+        val barY = (h - mTouchTargetHeight) / 2
+        val seekLeft = paddingLeft
+        val seekRight = w - paddingRight
+        val progressY = barY + (mTouchTargetHeight - mBarHeight) / 2
+        mSeekBounds.set(seekLeft, barY, seekRight, barY + mTouchTargetHeight)
+        mProgressBar.set(mSeekBounds.left + mScrubberPadding, progressY, mSeekBounds.right - mScrubberPadding, progressY + mBarHeight)
+        update()
+    }
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val hm = MeasureSpec.getMode(heightMeasureSpec)
+        val hs = MeasureSpec.getSize(heightMeasureSpec)
+        val h = if (hm == MeasureSpec.UNSPECIFIED) mTouchTargetHeight else if (hm == MeasureSpec.EXACTLY) hs else min(mTouchTargetHeight, hs)
+        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), height)
+        updateDrawableState()
+    }
     override fun onRtlPropertiesChanged(layoutDirection: Int) {
         scrubberDrawable?.let {
             if (it.setDrawableLayoutDirection(layoutDirection)) invalidate()
         }
     }
-
     override fun performAccessibilityAction(action: Int, arguments: Bundle?): Boolean {
         if (super.performAccessibilityAction(action, arguments)) {
             return true
@@ -241,15 +249,12 @@ class TimeBar : View {
         sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_SELECTED)
         return true
     }
-
     private fun positionScrubber(x: Float) {
         mScrubberBar.right = x.toInt().contrain(mProgressBar.left, mProgressBar.right)
     }
-
     fun removeListener(listener: OnScrubListener) {
         mListeners.remove(listener)
     }
-
     private fun resolveRelativeTouchPosition(event: MotionEvent): Point? {
         if (mLocationOnScreen == null) {
             mLocationOnScreen = IntArray(2)
@@ -262,7 +267,6 @@ class TimeBar : View {
         }
         return mTouchPosition
     }
-
     private fun scrubIncermentally(positionChange: Long): Boolean {
         if (duration <= 0) return false
         val scrubberPosition = getScrubberPosition()
@@ -273,24 +277,20 @@ class TimeBar : View {
         update()
         return true
     }
-
     override fun setEnabled(enabled: Boolean) {
         super.setEnabled(enabled)
         if (mScrubbing && !enabled) stopScrubbing(true)
     }
-
     fun setPlayedColor(color: Int) {
         mPlayedPaint.color = color
         invalidate(mSeekBounds)
     }
-
     private fun startScrubbing() {
         mScrubbing = true
         isPressed = true
         parent?.requestDisallowInterceptTouchEvent(true)
         mListeners.forEach { it.onScrubStart(this, getScrubberPosition()) }
     }
-
     private fun stopScrubbing(canceled: Boolean) {
         mScrubbing = false
         isPressed = false
@@ -298,7 +298,6 @@ class TimeBar : View {
         invalidate()
         mListeners.forEach { it.onScrubStop(this, getScrubberPosition(), canceled) }
     }
-
     private fun update() {
         mBufferedBar.set(mProgressBar)
         mScrubberBar.set(mProgressBar)
@@ -314,7 +313,6 @@ class TimeBar : View {
         }
         invalidate(mSeekBounds)
     }
-
     private fun updateDrawableState() {
         if (scrubberDrawable?.isStateful == true && scrubberDrawable?.setState(drawableState) == true)
             invalidate()
