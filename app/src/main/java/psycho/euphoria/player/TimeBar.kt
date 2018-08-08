@@ -18,6 +18,7 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import kotlin.math.min
 import android.R.attr.min
+import android.graphics.Canvas
 
 
 class TimeBar : View {
@@ -173,6 +174,26 @@ class TimeBar : View {
         if (event.eventType == AccessibilityEvent.TYPE_VIEW_SELECTED)
             event.text.add(getProgressText())
         event.className = TimeBar::class.java.name
+    }
+
+    private fun drawPlayhead(canvas: Canvas) {
+        if (duration <= 0) return
+        val px = mScrubberBar.right.contrain(mScrubberBar.left, mProgressBar.right)
+        val py = mScrubberBar.centerY()
+        scrubberDrawable?.let {
+            val sw = it.intrinsicWidth
+            val sh = it.intrinsicHeight
+            it.setBounds(
+                    px - sw / 2,
+                    py - sh / 2,
+                    px + sw / 2,
+                    py + sh / 2
+            )
+            it.draw(canvas)
+        } ?: run {
+            val scrubberSize = if (mScrubbing || isFocused) mScrubberDraggedSize else if (isEnabled) mScrubberEnabledSize else mScrubberDisabledSize
+            canvas.drawCircle(px.toFloat(), py.toFloat(), scrubberSize / 2f, mScrubberPaint)
+        }
     }
 
     override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
