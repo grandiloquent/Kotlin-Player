@@ -34,7 +34,7 @@
             android:layout_height="match_parent"
             android:scaleType="fitXY" />
 
-        <psycho.euphoria.tools.ui.SubtitleView
+        <psycho.euphoria.player.SubtitleView
             android:id="@+id/exo_subtitles"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />

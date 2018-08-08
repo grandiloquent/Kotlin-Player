@@ -27,7 +27,7 @@ class PlayerControlView : FrameLayout {
             if (value == null) {
                 field = DefaultControlDispatcher()
             } else {
-                controlDispatcher = value
+                field = value
             }
         }
     var player: Player? = null
@@ -148,19 +148,19 @@ class PlayerControlView : FrameLayout {
         mPlayButton = findViewById(R.id.exo_play);
         mPlayButton?.setOnClickListener(mComponetListener)
 
-        mPauseButton = findViewById(R.id.exo_play);
+        mPauseButton = findViewById(R.id.exo_pause);
         mPauseButton?.setOnClickListener(mComponetListener)
 
-        mPreviousButton = findViewById(R.id.exo_play);
+        mPreviousButton = findViewById(R.id.exo_prev);
         mPreviousButton?.setOnClickListener(mComponetListener)
 
-        mNextButton = findViewById(R.id.exo_play);
+        mNextButton = findViewById(R.id.exo_next);
         mNextButton?.setOnClickListener(mComponetListener)
-        mRewindButton = findViewById(R.id.exo_play);
+        mRewindButton = findViewById(R.id.exo_rew);
         mRewindButton?.setOnClickListener(mComponetListener)
-        mFastForwardButton = findViewById(R.id.exo_play);
+        mFastForwardButton = findViewById(R.id.exo_ffwd);
         mFastForwardButton?.setOnClickListener(mComponetListener)
-        mRepeatToggleButton = findViewById(R.id.exo_play);
+        mRepeatToggleButton = findViewById(R.id.exo_repeat_toggle);
         mRepeatToggleButton?.setOnClickListener(mComponetListener)
         shuffleButton = findViewById(R.id.exo_shuffle);
         shuffleButton?.setOnClickListener(mComponetListener)

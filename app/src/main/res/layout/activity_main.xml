@@ -4,7 +4,7 @@
     android:layout_height="match_parent">
 
     <psycho.euphoria.player.PlayerView
-        android:id="@+id/time_bar"
+        android:id="@+id/player_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"></psycho.euphoria.player.PlayerView>
 </FrameLayout>
